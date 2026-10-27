@@ -475,7 +475,7 @@ let VIEW = 'home';
 function goMarket() { requestAnimationFrame(() => $('#market').scrollIntoView({ behavior: 'smooth', block: 'start' })) }
 function route() {
   const h = location.hash.replace(/^#/, '') || '/'; const [, r, arg] = h.split('/');
-  const view = r === 'coin' ? 'coin' : ['launch', 'check', 'how', 'watch'].includes(r) ? r : 'home';
+  const view = r === 'coin' ? 'coin' : r === 'how' ? 'faq' : ['launch', 'check', 'faq', 'watch'].includes(r) ? r : 'home';
   const prevView = VIEW; VIEW = view;
   $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + view));
   const nav = r === 'board' || r === 'trending' ? r : view;
@@ -524,6 +524,32 @@ function revealAll() { if (!('IntersectionObserver' in window)) { $$('.rv').forE
     requestAnimationFrame(f);
   }
   requestAnimationFrame(f);
+})();
+
+/* =================== faq =================== */
+(function faq() {
+  const list = $('#faqList'); if (!list) return;
+  const D = $$('#faqList details'); D.forEach(d => { d._q = d.querySelector('summary').innerHTML; d._t = d.textContent.toLowerCase() });
+  let cat = 'all', q = '';
+  const rx = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  function apply() {
+    let shown = 0;
+    $$('#faqList .fqg').forEach(g => {
+      const okC = cat === 'all' || g.dataset.c === cat; let n = 0;
+      g.querySelectorAll('details').forEach(d => {
+        const m = okC && (!q || d._t.includes(q)); d.style.display = m ? '' : 'none'; if (m) n++;
+        d.querySelector('summary').innerHTML = q ? d._q.replace(new RegExp('(' + rx(q) + ')', 'gi'), '<mark>$1</mark>') : d._q;
+        if (q && m) d.open = true;
+      });
+      g.style.display = n ? '' : 'none'; shown += n;
+    });
+    $('#fqNone').style.display = shown ? 'none' : ''; syncAll();
+  }
+  function syncAll() { const vis = D.filter(d => d.style.display !== 'none'); $('#fqAll').textContent = vis.length && vis.every(d => d.open) ? 'Collapse all' : 'Expand all' }
+  $('#fqCats').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; cat = b.dataset.c; $$('#fqCats button').forEach(x => x.classList.toggle('on', x === b)); apply() });
+  $('#fq').addEventListener('input', e => { q = e.target.value.trim().toLowerCase(); apply() });
+  $('#fqAll').addEventListener('click', () => { const vis = D.filter(d => d.style.display !== 'none'); const open = !vis.every(d => d.open); vis.forEach(d => d.open = open); syncAll() });
+  D.forEach(d => d.addEventListener('toggle', syncAll));
 })();
 
 /* =================== boot =================== */
