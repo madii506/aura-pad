@@ -1,0 +1,20 @@
+3d {"ok":true,"intro":true,"hero":true}
+> s1_intro (0.3 min in, 400 ms/frame)
+clip s1_intro: 359 frames = 11.97s
+> s2_map (9.5 min in, 1244 ms/frame)
+clip s2_map: 527 frames = 17.57s
+> s3_ladder (16.5 min in, 613 ms/frame)
+clip s3_ladder: 372 frames = 12.40s
+> s4_board (19.3 min in, 288 ms/frame)
+clip s4_board: 361 frames = 12.03s
+coin Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump CATE
+> s5_search (22.2 min in, 427 ms/frame)
+clip s5_search: 150 frames = 5.00s
+> s6_coin (27.9 min in, 83 ms/frame)
+clip s6_coin: 406 frames = 13.53s
+> s7_launch (30.5 min in, 149 ms/frame)
+clip s7_launch: 328 frames = 10.93s
+> s8_check (32.2 min in, 197 ms/frame)
+clip s8_check: 232 frames = 7.73s
+> s9_bull (33.4 min in, 464 ms/frame)
+clip s9_bull: 233 frames = 7.77s
