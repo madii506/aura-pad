@@ -85,8 +85,8 @@ body.entering .hero .vx{animation:enUp 1s .5s both}
 @keyframes flashA{0%{background:rgba(185,164,255,.5);border-color:var(--a)}100%{background:var(--card);border-color:var(--line)}}
 
 /* ---------- layout ---------- */
-.app{display:grid;grid-template-columns:236px 1fr;min-height:calc(100vh - 36px)}
-aside{position:sticky;top:36px;height:calc(100vh - 36px);border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:2px;background:var(--bg);overflow-y:auto;scrollbar-width:none}
+.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+aside{position:sticky;top:0;height:100vh;border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:2px;background:var(--bg);overflow-y:auto;scrollbar-width:none}
 aside::-webkit-scrollbar{display:none}
 .logo{display:flex;align-items:center;gap:10px;padding:4px 8px 14px}
 .logo img{width:34px;height:34px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(185,164,255,.45));animation:bob 4s ease-in-out infinite}
@@ -107,7 +107,7 @@ aside::-webkit-scrollbar{display:none}
 .ls b{color:var(--tx);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .side-foot{margin-top:auto;padding:16px 4px 2px;display:flex;flex-direction:column;gap:8px}
 main{min-width:0}
-.top{position:sticky;top:36px;z-index:30;display:flex;align-items:center;gap:10px;padding:12px 22px;background:rgba(13,13,16,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:10px;padding:12px 22px;background:rgba(13,13,16,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
 .search{flex:1;max-width:520px;position:relative}
 .search input{width:100%;height:40px;border-radius:10px;border:1px solid var(--line2);background:var(--card);color:var(--tx);padding:0 40px 0 38px;font:500 14px Inter;outline:none;transition:border-color .2s,box-shadow .2s}
 .search input:focus{border-color:var(--a);box-shadow:0 0 0 4px rgba(185,164,255,.14)}
@@ -325,7 +325,7 @@ textarea.in{height:96px;padding:12px 14px;resize:vertical}
 .rules{border:1px solid rgba(185,164,255,.35);border-radius:14px;padding:14px;background:rgba(185,164,255,.05);margin-bottom:16px}
 .rules h5{margin:0 0 8px;font:700 13px Pix;color:var(--a2);letter-spacing:.04em}
 .curve{width:100%;height:120px;margin-top:10px;display:block}
-.prev{position:sticky;top:110px;display:flex;flex-direction:column;gap:12px}
+.prev{position:sticky;top:76px;display:flex;flex-direction:column;gap:12px}
 .note{font-size:12px;color:var(--dim)}
 
 /* ---------- check ---------- */
@@ -400,7 +400,6 @@ textarea.in{height:96px;padding:12px 14px;resize:vertical}
   <button class="iskip" id="iskip">skip</button>
 </div>
 
-<div class="feed" id="feed"><div class="lb"><i class="dot"></i>live</div><div id="feedItems" style="display:flex;gap:8px"></div></div>
 <div class="app">
   <aside>
     <a class="logo" href="#/"><img src="assets/img/a.png" alt=""><b>aura</b></a>
@@ -470,7 +469,7 @@ textarea.in{height:96px;padding:12px 14px;resize:vertical}
   <div class="sec-h rv"><h2>Trending</h2><small>pump.fun + StonkFun · last hour · hover to pause</small></div>
   <div class="mq rv" id="strip"><div class="mq-in"><div class="skel" style="width:240px;height:180px;flex:none"></div><div class="skel" style="width:240px;height:180px;flex:none"></div><div class="skel" style="width:240px;height:180px;flex:none"></div></div></div>
 
-  <div id="market" style="scroll-margin-top:120px"></div>
+  <div id="market" style="scroll-margin-top:84px"></div>
   <div class="sec-h"><h2>The board</h2><small id="bCount"></small></div>
   <div class="bar2">
     <div class="tabs" id="tabs"><button data-t="new" class="on">New</button><button data-t="trend">Trending</button><button data-t="aura">Most aura</button><button data-t="move">Movers</button><button data-t="top">Top mcap</button><button data-t="watch">★ Watchlist</button></div>
