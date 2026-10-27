@@ -27,7 +27,7 @@ function introProgress() {
   const b = $('#ildB'), t = $('#ildT'); if (!b) return;
   b.style.width = Math.max(10, LOADED.size / 4 * 100) + '%';
   const all = [...ALL.values()], pf = all.filter(c => c.pad === 'pump.fun').length, sf = all.filter(c => c.pad === 'stonkfun').length;
-  if (all.length) t.innerHTML = `<i class="dot"></i>${all.length} live coins · pump.fun ${pf} · StonkFun ${sf}`;
+  if (all.length && t) t.innerHTML = `<i class="dot"></i>${all.length} live coins · pump.fun ${pf} · StonkFun ${sf}`;
   // real coin logos join the orbit as they load
   const pool = all.filter(c => !INTRO.picked.has(c.mint) && (c.pad === 'pump.fun' || c.simg)).slice(0, 18 - INTRO.picked.size);
   pool.forEach(c => { INTRO.picked.add(c.mint); const im = new Image(); im.referrerPolicy = 'no-referrer'; im.onload = () => { if (!INTRO.done && INTRO.orbit.length < 16) INTRO.orbit.push({ im, born: Math.max(performance.now(), INTRO.t0 + 1850 + INTRO.orbit.length * 70), k: INTRO.orbit.length }) }; im.src = c.pad === 'pump.fun' ? pcdn(c.mint, '86x86') : c.simg });
@@ -122,7 +122,7 @@ function closeIntro() {
     }
     // wordmark scramble then settle
     iw.forEach((s, i) => { const st = 1.75 + i * .1, set = st + .38; if (t >= st && !s.classList.contains('on')) s.classList.add('on'); if (t >= st && t < set) s.textContent = GLY[(Math.random() * GLY.length) | 0]; else if (t >= set && !s.classList.contains('set')) { s.textContent = 'aura'[i]; s.classList.add('set') } });
-    if (t > 2.3 && !feeStarted) { feeStarted = true; const v = $('#ifeeV'), t1 = performance.now(); const f = n => { const k = Math.min(1, (n - t1) / 1000), e = 1 - Math.pow(1 - k, 3); v.textContent = (1.25 - .75 * e).toFixed(2) + '%'; if (k < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }
+    if (t > 2.3 && !feeStarted && $('#ifeeV')) { feeStarted = true; const v = $('#ifeeV'), t1 = performance.now(); const f = n => { const k = Math.min(1, (n - t1) / 1000), e = 1 - Math.pow(1 - k, 3); v.textContent = (1.25 - .75 * e).toFixed(2) + '%'; if (k < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }
     if (!INTRO.done && ((t > 4.4 && LOADED.size >= 2) || t > 6.2)) closeIntro();
     requestAnimationFrame(frame);
   }
