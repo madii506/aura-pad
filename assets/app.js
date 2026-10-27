@@ -16,65 +16,114 @@ const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('
 const tile = s => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#1c1c23"/><text x="32" y="41" text-anchor="middle" font-family="Arial" font-weight="700" font-size="24" fill="#b9a4ff">${String(s || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || '?'}</text></svg>`);
 const store = { get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d } catch (e) { return d } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch (e) { } } };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const pcdn = (m, v = '128x128') => 'https://images.pump.fun/coin-image/' + m + '?variant=' + v;
 function countTo(el, to, fmt, dur = 900) { if (!el || to == null || !isFinite(to)) return; const from = el._v || 0; el._v = to; const t0 = performance.now(); const f = n => { const k = Math.min(1, (n - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + (to - from) * e); if (k < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }
 
 /* =================== intro =================== */
 const LOADED = new Set();
-const INTRO = { done: false, t0: performance.now() };
+const INTRO = { done: false, t0: performance.now(), orbit: [], picked: new Set(), exitAt: null };
 function introProgress() {
   if (INTRO.done) return;
   const b = $('#ildB'), t = $('#ildT'); if (!b) return;
-  b.style.width = Math.max(8, LOADED.size / 4 * 100) + '%';
-  const n = ALL.size; if (n) t.textContent = `${n} live coins read from pump.fun and StonkFun`;
+  b.style.width = Math.max(10, LOADED.size / 4 * 100) + '%';
+  const all = [...ALL.values()], pf = all.filter(c => c.pad === 'pump.fun').length, sf = all.filter(c => c.pad === 'stonkfun').length;
+  if (all.length) t.innerHTML = `<i class="dot"></i>${all.length} live coins · pump.fun ${pf} · StonkFun ${sf}`;
+  // real coin logos join the orbit as they load
+  const pool = all.filter(c => !INTRO.picked.has(c.mint) && (c.pad === 'pump.fun' || c.simg)).slice(0, 18 - INTRO.picked.size);
+  pool.forEach(c => { INTRO.picked.add(c.mint); const im = new Image(); im.referrerPolicy = 'no-referrer'; im.onload = () => { if (!INTRO.done && INTRO.orbit.length < 16) INTRO.orbit.push({ im, born: Math.max(performance.now(), INTRO.t0 + 1850 + INTRO.orbit.length * 70), k: INTRO.orbit.length }) }; im.src = c.pad === 'pump.fun' ? pcdn(c.mint, '86x86') : c.simg });
 }
 function closeIntro() {
-  if (INTRO.done) return; INTRO.done = true;
+  if (INTRO.done) return; INTRO.done = true; INTRO.exitAt = performance.now();
   const el = $('#intro'); if (!el) return;
-  el.classList.add('out'); document.body.classList.remove('locked');
-  setTimeout(() => el.remove(), 950);
+  document.body.classList.add('entering'); document.body.classList.remove('locked');
+  el.classList.add('out');
+  setTimeout(() => el.remove(), 950); setTimeout(() => document.body.classList.remove('entering'), 2200);
+  revealAll();
 }
 (function intro() {
   const el = $('#intro'); if (!el) return;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  $('#ienter').onclick = closeIntro; $('#iskip').onclick = closeIntro;
-  addEventListener('keydown', e => { if (!INTRO.done && (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ')) closeIntro() });
-  if (reduce) { setTimeout(closeIntro, 400); return }
+  $('#iskip').onclick = closeIntro; el.addEventListener('click', e => { if (performance.now() - INTRO.t0 > 1200) closeIntro() });
+  addEventListener('keydown', e => { if (!INTRO.done && (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ')) closeIntro() });
+  if (reduce) { setTimeout(closeIntro, 500); return }
   const cv = $('#ic'), ctx = cv.getContext('2d'); let W = 0, H = 0, D = 1, box = null;
   const size = () => { const ia = $('#ia'); if (!ia) { removeEventListener('resize', size); return } D = Math.min(2, devicePixelRatio || 1); W = cv.clientWidth; H = cv.clientHeight; cv.width = W * D; cv.height = H * D; ctx.setTransform(D, 0, 0, D, 0, 0); box = ia.getBoundingClientRect() };
   size(); addEventListener('resize', size);
+  // warp stars
+  const ST = Array.from({ length: 160 }, () => ({ a: Math.random() * 6.283, d: Math.random(), s: .6 + Math.random() * 1.6, v: .25 + Math.random() * .6 }));
   let P = [], N = 0, M = 0, ready = false;
   const im = new Image();
   im.onload = () => {
-    N = 44; M = Math.round(N * im.height / im.width);
+    N = 46; M = Math.round(N * im.height / im.width);
     const oc = document.createElement('canvas'); oc.width = N; oc.height = M; const o = oc.getContext('2d'); o.drawImage(im, 0, 0, N, M);
     let d; try { d = o.getImageData(0, 0, N, M).data } catch (e) { return }
-    for (let y = 0; y < M; y++) for (let x = 0; x < N; x++) { const i = (y * N + x) * 4; if (d[i + 3] > 150) P.push({ x, y, c: `rgb(${d[i]},${d[i + 1]},${d[i + 2]})`, a: Math.random() * Math.PI * 2, r: .55 + Math.random() * .6, dl: (1 - y / M) * .45 + Math.random() * .35, sp: .75 + Math.random() * .5 }) }
+    for (let y = 0; y < M; y++) for (let x = 0; x < N; x++) { const i = (y * N + x) * 4; if (d[i + 3] > 150) P.push({ x, y, r: d[i], g: d[i + 1], b: d[i + 2], a: Math.random() * 6.283, R: .45 + Math.random() * .55, dl: Math.hypot(x - N / 2, y - M / 2) / N * .55 + Math.random() * .3, sp: .8 + Math.random() * .45 }) }
     ready = true;
   };
   im.src = 'assets/img/a.png';
-  const ease = k => 1 - Math.pow(1 - k, 4);
-  let feeStarted = false;
+  const ease = k => 1 - Math.pow(1 - k, 4), easeIO = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+  const iw = [...$$('#iw span')], GLY = 'aur#%&@$01▚▞▓<>/';
+  let feeStarted = false, flash = 0, shakeT = -1, impacted = false;
+  function drawOrbit(cx, cy, rx, ry, t, front, zoom) {
+    const n = INTRO.orbit.length; if (!n) return;
+    for (const o of INTRO.orbit) {
+      const ang = t * .55 + o.k / Math.max(8, n) * 6.283; const z = Math.sin(ang); if ((z >= 0) !== front) continue;
+      const pop = Math.max(0, Math.min(1, (performance.now() - o.born) / 450)), pe = 1 - Math.pow(1 - pop, 3); if (!pop) continue;
+      const sc = (.62 + .38 * (z + 1) / 2) * (0.4 + .6 * pe) * zoom;
+      const sz = 38 * sc, x = cx + Math.cos(ang) * rx * zoom - sz / 2, y = cy + z * ry * zoom - sz / 2;
+      ctx.globalAlpha = (.35 + .65 * (z + 1) / 2) * pop;
+      ctx.save(); ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, sz, sz, sz * .24); else ctx.rect(x, y, sz, sz); ctx.clip(); ctx.drawImage(o.im, x, y, sz, sz); ctx.restore();
+      ctx.strokeStyle = 'rgba(185,164,255,.55)'; ctx.lineWidth = 1.2; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, sz, sz, sz * .24); else ctx.rect(x, y, sz, sz); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
   function frame(now) {
     if (INTRO.done && !$('#intro')) return;
-    const t = (now - INTRO.t0) / 1000; ctx.clearRect(0, 0, W, H);
-    if (ready && box) {
-      const cell = box.width / N, ox = box.left, oy = box.top, cx = ox + box.width / 2, cy = oy + box.height / 2;
-      const fl = Math.sin(t * 1.7) * 4;
-      const sweep = ((t - 1.6) % 2.6) / 2.6;
+    const t = (now - INTRO.t0) / 1000;
+    const ex = INTRO.exitAt ? Math.min(1, (now - INTRO.exitAt) / 850) : 0, zoom = 1 + easeIO(ex) * 1.6;
+    // trails while assembling, clean frame after
+    if (t < 1.9 && !ex) { ctx.globalCompositeOperation = 'destination-out'; ctx.fillStyle = 'rgba(0,0,0,.32)'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over' } else ctx.clearRect(0, 0, W, H);
+    if (!box) { requestAnimationFrame(frame); return }
+    const cx = box.left + box.width / 2, cy = box.top + box.height / 2;
+    let sx = 0, sy = 0; if (shakeT > 0 && t - shakeT < .35) { const k = 1 - (t - shakeT) / .35; sx = (Math.random() - .5) * 10 * k; sy = (Math.random() - .5) * 10 * k }
+    // warp stars rushing toward the A, then settling into a slow drift
+    const warp = Math.max(0, 1 - t / 1.8);
+    for (const s of ST) {
+      s.d -= (.004 + warp * .03) * s.v; if (s.d < .02) { s.d = 1; s.a = Math.random() * 6.283 }
+      const R = Math.max(W, H) * .75 * s.d, x = cx + Math.cos(s.a) * R, y = cy + Math.sin(s.a) * R * .8;
+      const len = warp * 26 * s.v; ctx.strokeStyle = `rgba(185,164,255,${.12 + .4 * (1 - s.d)})`; ctx.lineWidth = s.s;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(s.a) * len, y + Math.sin(s.a) * len * .8); ctx.stroke();
+      if (!len) { ctx.fillStyle = `rgba(185,164,255,${.15 + .35 * (1 - s.d)})`; ctx.fillRect(x, y, s.s, s.s) }
+    }
+    if (ready) {
+      const cell = box.width / N * zoom, w = N * cell, h = M * cell;
+      const ox = cx - w / 2 + sx, oy = cy - h / 2 + sy + Math.sin(t * 1.6) * 4 * Math.min(1, Math.max(0, t - 1.8));
+      const orx = box.width * 1.05, ory = box.width * .32;
+      drawOrbit(cx + sx, cy + sy, orx, ory, t, false, zoom);
+      const sweep = ((t - 1.9) % 2.4) / 2.4; let all = true;
       for (const p of P) {
-        const k = Math.max(0, Math.min(1, (t - .1 - p.dl) / (.95 * p.sp))), e = ease(k);
-        const tx = ox + p.x * cell, ty = oy + p.y * cell + fl * e;
-        const R = Math.max(W, H) * p.r, sx = cx + Math.cos(p.a) * R, sy = cy + Math.sin(p.a) * R;
-        const x = sx + (tx - sx) * e, y = sy + (ty - sy) * e + Math.sin(p.a * 3 + t * 2) * (1 - e) * 30;
-        ctx.globalAlpha = Math.min(1, k * 1.8); ctx.fillStyle = p.c;
-        const s = cell * (k < 1 ? .55 + .4 * e : .96); ctx.fillRect(x, y, s, s);
-        if (t > 1.6 && k >= 1) { const d = (p.x + p.y) / (N + M); const w = Math.abs(d - sweep); if (w < .06) { ctx.globalAlpha = (1 - w / .06) * .55; ctx.fillStyle = '#fff'; ctx.fillRect(x, y, s, s) } }
+        const k = Math.max(0, Math.min(1, (t - .15 - p.dl) / (1.05 * p.sp))), e = ease(k); if (k < 1) all = false;
+        const tx = ox + p.x * cell, ty = oy + p.y * cell;
+        const R = Math.max(W, H) * .62 * p.R * (1 - e), th = p.a + (1 - e) * 5.5;
+        const spx = cx + Math.cos(th) * R, spy = cy + Math.sin(th) * R * .7;
+        const x = spx + (tx - spx) * e, y = spy + (ty - spy) * e;
+        const wv = 1 - e; ctx.globalAlpha = Math.min(1, k * 2) * (1 - ex);
+        ctx.fillStyle = `rgb(${p.r + (255 - p.r) * wv | 0},${p.g + (255 - p.g) * wv | 0},${p.b + (255 - p.b) * wv | 0})`;
+        const s = cell * (k < 1 ? .5 + .45 * e : .95); ctx.fillRect(x, y, s, s);
+        if (t > 1.9 && k >= 1) { const d = (p.x + p.y) / (N + M), wd = Math.abs(d - sweep); if (wd < .05) { ctx.globalAlpha = (1 - wd / .05) * .6 * (1 - ex); ctx.fillStyle = '#fff'; ctx.fillRect(x, y, s, s) } }
       }
       ctx.globalAlpha = 1;
+      if (all && !impacted && t > 1) { impacted = true; flash = 1; shakeT = t }
+      if (impacted) {
+        const it = t - shakeT; if (it < 1.1) { const k = it / 1.1, r = box.width * (.6 + k * 2.4); ctx.strokeStyle = `rgba(214,201,255,${(1 - k) * .7})`; ctx.lineWidth = 3 * (1 - k) + .5; ctx.beginPath(); ctx.ellipse(cx, cy, r, r * .8, 0, 0, 6.283); ctx.stroke(); const r2 = box.width * (.5 + k * 1.5); ctx.strokeStyle = `rgba(143,120,255,${(1 - k) * .45})`; ctx.beginPath(); ctx.ellipse(cx, cy, r2, r2 * .8, 0, 0, 6.283); ctx.stroke() }
+      }
+      drawOrbit(cx + sx, cy + sy, orx, ory, t, true, zoom);
+      if (flash > 0) { ctx.fillStyle = `rgba(214,201,255,${flash * .22})`; ctx.fillRect(0, 0, W, H); flash = Math.max(0, flash - .05) }
     }
-    if (t > 2.05 && !feeStarted) { feeStarted = true; const v = $('#ifeeV'), t1 = performance.now(); const f = n => { const k = Math.min(1, (n - t1) / 1100), e = 1 - Math.pow(1 - k, 3); v.textContent = (1.25 - .75 * e).toFixed(2) + '%'; if (k < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }
-    if (t > 6.5 && LOADED.size >= 2) closeIntro();
-    if (t > 9) closeIntro();
+    // wordmark scramble then settle
+    iw.forEach((s, i) => { const st = 1.75 + i * .1, set = st + .38; if (t >= st && !s.classList.contains('on')) s.classList.add('on'); if (t >= st && t < set) s.textContent = GLY[(Math.random() * GLY.length) | 0]; else if (t >= set && !s.classList.contains('set')) { s.textContent = 'aura'[i]; s.classList.add('set') } });
+    if (t > 2.3 && !feeStarted) { feeStarted = true; const v = $('#ifeeV'), t1 = performance.now(); const f = n => { const k = Math.min(1, (n - t1) / 1000), e = 1 - Math.pow(1 - k, 3); v.textContent = (1.25 - .75 * e).toFixed(2) + '%'; if (k < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }
+    if (!INTRO.done && ((t > 4.4 && LOADED.size >= 2) || t > 6.2)) closeIntro();
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -149,10 +198,31 @@ async function solPrice() { try { const r = await get(`${JUP}/search?query=${SOL
 function emptyIf(t) { if (!S[t].length && TAB === t) $('#grid').innerHTML = '<div class="empty">The data sources aren\'t answering right now. Try again in a moment.</div>' }
 
 /* =================== images =================== */
-const srcs = c => { const L = []; if (GOOD[c.mint]) L.push(GOOD[c.mint]); if (c.pad === 'pump.fun' || /pump$/.test(c.mint || '')) L.push('https://images.pump.fun/coin-image/' + c.mint + '?variant=200x200'); if (c.simg) L.push(c.simg); if (c.jimg) L.push(c.jimg); const o = c.simg || c.jimg; if (o) L.push('https://wsrv.nl/?url=' + encodeURIComponent(o) + '&w=200&h=200&fit=cover'); return [...new Set(L)] };
-window.__ai = (el, sym) => { const n = (el.dataset.alt || '').split('|').filter(Boolean); if (n.length) { el.dataset.alt = n.slice(1).join('|'); el.src = n[0] } else { el.onerror = null; el.src = tile(sym) } };
-window.__ok = (el, m) => { if (m && !el.src.startsWith('data:')) GOOD[m] = el.src };
-const img = (c, cls = '', id = '') => { const L = srcs(c); const sym = esc((c.sym || '').replace(/['\\]/g, '')); return L.length ? `<img${id ? ` id="${id}"` : ''} class="${cls}" src="${esc(L[0])}" data-alt="${esc(L.slice(1).join('|'))}" alt="" loading="lazy" referrerpolicy="no-referrer" onload="__ok(this,'${esc(c.mint || '')}')" onerror="__ai(this,'${sym}')">` : `<img${id ? ` id="${id}"` : ''} class="${cls}" src="${tile(c.sym)}" alt="">` };
+// pump.fun's image server has every pump.fun coin (valid sizes: 64, 86, 128, 256, 300, 400)
+const wsrv = (u, n = 160) => 'https://wsrv.nl/?url=' + encodeURIComponent(u) + `&w=${n}&h=${n}&fit=cover&default=1`;
+const apiImg = c => '/api/img?mint=' + encodeURIComponent(c.mint) + (c.simg || c.jimg ? '&u=' + encodeURIComponent(c.simg || c.jimg) : '') + (c.pad === 'pump.fun' ? '&pad=pump.fun' : '');
+const isPump = c => c.pad === 'pump.fun' || /pump$/.test(c.mint || '');
+const srcs = (c, sz = 'm') => {
+  const L = []; const v = sz === 's' ? '86x86' : sz === 'l' ? '256x256' : '128x128';
+  if (isPump(c) && c.mint) L.push(pcdn(c.mint, v));
+  if (GOOD[c.mint]) L.push(GOOD[c.mint]);
+  if (c.simg) L.push(c.simg); if (c.jimg) L.push(c.jimg);
+  const o = c.simg || c.jimg; if (o) L.push(wsrv(o, sz === 'l' ? 300 : 160));
+  if (c.mint && c.mint.length >= 32) L.push(apiImg(c));
+  return [...new Set(L)];
+};
+window.__ai = (el, sym) => {
+  const n = (el.dataset.alt || '').split('|').filter(Boolean);
+  if (n.length) { el.dataset.alt = n.slice(1).join('|'); el.src = n[0]; return }
+  el.onerror = null; const api = el.dataset.api; el.src = tile(sym);
+  // one more try a bit later: brand-new coins sometimes publish their image a few seconds after launch
+  if (api && !el.dataset.retried) { el.dataset.retried = 1; setTimeout(() => { if (!el.isConnected) return; const t = new Image(); t.onload = () => { el.src = t.src }; t.src = api + '&r=' + Date.now() }, 12000) }
+};
+window.__ok = (el, m) => { if (m && !el.src.startsWith('data:') && !el.src.includes('images.pump.fun')) GOOD[m] = el.src };
+const img = (c, cls = '', id = '', sz = 'm') => {
+  const L = srcs(c, sz); const sym = esc((c.sym || '').replace(/['\\]/g, '')); const idA = id ? ` id="${id}"` : '';
+  return L.length ? `<img${idA} class="${cls}" src="${esc(L[0])}" data-alt="${esc(L.slice(1).join('|'))}" data-api="${c.mint && c.mint.length >= 32 ? esc(apiImg(c)) : ''}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="__ok(this,'${esc(c.mint || '')}')" onerror="__ai(this,'${sym}')">` : `<img${idA} class="${cls}" src="${tile(c.sym)}" alt="">`;
+};
 const padPill = c => c.pad === 'stonkfun' ? '<span class="pp sf"><i></i>StonkFun</span>' : c.pad === 'pump.fun' ? '<span class="pp pf"><i></i>pump.fun</span>' : '';
 const quoteChip = c => c.quote ? `<span class="qt" title="Paired with ${esc(c.quote)} on StonkFun">${c.qlogo ? `<img src="${esc(c.qlogo)}" alt="" onerror="this.remove()">` : '⇄'}${esc(c.quote)}</span>` : '';
 const xUrl = c => c.sx || (c.tw && /^https?:/.test(c.tw) ? c.tw : c.tw ? 'https://x.com/' + String(c.tw).replace(/^@/, '') : '');
@@ -163,15 +233,15 @@ const socials = c => { const a = []; const x = xUrl(c), w = webUrl(c), t = tgUrl
 /* =================== home renders =================== */
 function feed(L, hit) {
   const box = $('#feedItems'); if (!L.length) return;
-  const html = L.map(c => `<a class="fi${hit ? ' hit' : ''}" href="#/coin/${c.mint}"><span class="pdot ${c.pad === 'stonkfun' ? 'sf' : 'pf'}"></span>${img(c)}<b>$${esc((c.sym || '').slice(0, 10))}</b><span>${c.pad === 'stonkfun' ? 'StonkFun' : 'pump.fun'} · ${usd(c.mcap)}</span></a>`).join('');
+  const html = L.map(c => `<a class="fi${hit ? ' hit' : ''}" href="#/coin/${c.mint}"><span class="pdot ${c.pad === 'stonkfun' ? 'sf' : 'pf'}"></span>${img(c, '', '', 's')}<b>$${esc((c.sym || '').slice(0, 10))}</b><span>${c.pad === 'stonkfun' ? 'StonkFun' : 'pump.fun'} · ${usd(c.mcap)}</span></a>`).join('');
   box.insertAdjacentHTML('afterbegin', html); while (box.children.length > 28) box.lastChild.remove();
 }
 function king() {
   const c = ALL.get(S.aura[0]); if (!c) return;
   const sfs = [...ALL.values()].filter(x => x.pad === 'stonkfun' && x.mint !== c.mint && x.mcap);
   const k2 = sfs.filter(x => x.aura != null).sort((a, b) => (b.aura || 0) - (a.aura || 0))[0] || sfs.sort((a, b) => b.mcap - a.mcap)[0];
-  let h = `<a class="king" href="#/coin/${c.mint}"><span class="shn"></span>${img(c)}<div style="min-width:0"><div class="crown">✦ most aura · ${padName(c.pad)}</div><h3>$${esc((c.sym || '').slice(0, 14))}</h3><div class="meta">${esc((c.name || '').slice(0, 40))} · ${usd(c.mcap)} mcap · ${fmtN(c.holders)} holders · ${ago(c.created)} old</div></div><div class="big"><b>+${Math.round(c.aura || 0)} aura</b><span>organic score · 1h <span class="${(c.c1 || 0) < 0 ? 'dn' : 'up'}">${pct(c.c1)}</span></span></div></a>`;
-  if (k2) h += `<a class="king k2" href="#/coin/${k2.mint}"><span class="shn"></span>${img(k2)}<div style="min-width:0"><div class="crown">✦ top on StonkFun</div><h3>$${esc((k2.sym || '').slice(0, 14))}</h3><div class="meta">${esc((k2.name || '').slice(0, 30))} ${k2.quote ? '· paired with ' + esc(k2.quote) : ''}</div></div><div class="big"><b>${usd(k2.mcap)}</b><span>${k2.aura != null ? '+' + Math.round(k2.aura) + ' aura · ' : ''}${fmtN(k2.holders)} holders</span></div></a>`;
+  let h = `<a class="king" href="#/coin/${c.mint}"><span class="shn"></span>${img(c, '', '', 'l')}<div style="min-width:0"><div class="crown">✦ most aura · ${padName(c.pad)}</div><h3>$${esc((c.sym || '').slice(0, 14))}</h3><div class="meta">${esc((c.name || '').slice(0, 40))} · ${usd(c.mcap)} mcap · ${fmtN(c.holders)} holders · ${ago(c.created)} old</div></div><div class="big"><b>+${Math.round(c.aura || 0)} aura</b><span>organic score · 1h <span class="${(c.c1 || 0) < 0 ? 'dn' : 'up'}">${pct(c.c1)}</span></span></div></a>`;
+  if (k2) h += `<a class="king k2" href="#/coin/${k2.mint}"><span class="shn"></span>${img(k2, '', '', 'l')}<div style="min-width:0"><div class="crown">✦ top on StonkFun</div><h3>$${esc((k2.sym || '').slice(0, 14))}</h3><div class="meta">${esc((k2.name || '').slice(0, 30))} ${k2.quote ? '· paired with ' + esc(k2.quote) : ''}</div></div><div class="big"><b>${usd(k2.mcap)}</b><span>${k2.aura != null ? '+' + Math.round(k2.aura) + ' aura · ' : ''}${fmtN(k2.holders)} holders</span></div></a>`;
   $('#king').innerHTML = h;
 }
 let STRIPKEY = '';
@@ -179,7 +249,7 @@ function strip() {
   const L = S.trend.slice(0, 18).map(m => ALL.get(m)).filter(Boolean); if (!L.length) return;
   const key = L.map(c => c.mint).join(); if (key === STRIPKEY) { $$('#strip .tc').forEach(el => { const c = ALL.get(el.dataset.m); if (!c) return; const g = el.querySelector('.chg'); g.textContent = pct(c.c1); g.className = 'chg ' + ((c.c1 || 0) < 0 ? 'dn' : 'up'); el.querySelector('.bd span').textContent = `${usd(c.mcap)} · vol ${usd(c.v1)} / 1h` }); return }
   STRIPKEY = key;
-  const one = L.map(c => `<a class="tc" href="#/coin/${c.mint}" data-m="${c.mint}"><div class="im">${img(c)}${padPill(c)}<span class="chg ${(c.c1 || 0) < 0 ? 'dn' : 'up'}">${pct(c.c1)}</span></div><div class="bd"><b>$${esc((c.sym || '').slice(0, 14))}</b><span>${usd(c.mcap)} · vol ${usd(c.v1)} / 1h</span></div></a>`).join('');
+  const one = L.map(c => `<a class="tc" href="#/coin/${c.mint}" data-m="${c.mint}"><div class="im">${img(c, '', '', 'l')}${padPill(c)}<span class="chg ${(c.c1 || 0) < 0 ? 'dn' : 'up'}">${pct(c.c1)}</span></div><div class="bd"><b>$${esc((c.sym || '').slice(0, 14))}</b><span>${usd(c.mcap)} · vol ${usd(c.v1)} / 1h</span></div></a>`).join('');
   $('#strip').innerHTML = `<div class="mq-in" style="--dur:${L.length * 4.5}s">${one}${one}</div>`;
 }
 let RATE = 0, TICK = 0, TLAST = performance.now();
@@ -295,7 +365,7 @@ const st = (k, v, cls = '') => `<div class="st"><span>${k}</span><b class="${cls
 const kv = (k, v, cls = '') => v == null || v === '' ? '' : `<div class="kv"><span>${k}</span><b class="${cls}">${v}</b></div>`;
 function renderCoin(c) {
   const mint = c.mint, sf = c.pad === 'stonkfun';
-  $('#cImg').outerHTML = img(c, '', 'cImg');
+  $('#cImg').outerHTML = img(c, '', 'cImg', 'l');
   $('#cName').textContent = '$' + (c.sym || '?'); $('#cPad').innerHTML = padPill(c); $('#cQuote').innerHTML = quoteChip(c);
   $('#cSub').textContent = c.name || '';
   $('#cMint').innerHTML = `${short(mint)} <span style="color:var(--a)">copy address</span>`; $('#cMint').onclick = () => { navigator.clipboard?.writeText(mint).then(() => toast('Address copied'), () => toast('Copy failed')) };
@@ -458,6 +528,7 @@ function revealAll() { if (!('IntersectionObserver' in window)) { $$('.rv').forE
 
 /* =================== boot =================== */
 $('#nWatch').textContent = WATCH.length;
+$$('aside .nav a, aside .slab, aside .sbtn, aside .ls').forEach((e, i) => e.style.setProperty('--d', i));
 route(); revealAll();
 loadJNew(); loadSFNew(); loadTrend(); loadAura(); loadSFTop(); solPrice();
 setTimeout(enrich, 2500);
