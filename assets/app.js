@@ -131,12 +131,12 @@ function closeIntro() {
 
 /* =================== data =================== */
 const abs = u => !u ? '' : /^https?:/.test(u) ? u : SF + (u.startsWith('/') ? '' : '/') + u;
-const fromJup = t => ({ mint: t.id, sym: t.symbol, name: t.name, jimg: t.icon, pad: t.launchpad, mcap: t.mcap, price: t.usdPrice, liq: t.liquidity, holders: t.holderCount, hch: t.stats1h?.holderChange, aura: t.organicScore, auraL: t.organicScoreLabel, dev: t.dev, created: t.firstPool?.createdAt || t.createdAt, pool: t.firstPool?.id, gpool: t.graduatedPool, gat: t.graduatedAt,
+const fromJup = t => ({ mint: t.id, sym: String(t.symbol || '').replace(/^\$+/, ''), name: t.name, jimg: t.icon, pad: t.launchpad, mcap: t.mcap, price: t.usdPrice, liq: t.liquidity, holders: t.holderCount, hch: t.stats1h?.holderChange, aura: t.organicScore, auraL: t.organicScoreLabel, dev: t.dev, created: t.firstPool?.createdAt || t.createdAt, pool: t.firstPool?.id, gpool: t.graduatedPool, gat: t.graduatedAt,
   c5: t.stats5m?.priceChange, c1: t.stats1h?.priceChange, c24: t.stats24h?.priceChange,
   v1: t.stats1h ? (t.stats1h.buyVolume || 0) + (t.stats1h.sellVolume || 0) : undefined, v24: t.stats24h ? (t.stats24h.buyVolume || 0) + (t.stats24h.sellVolume || 0) : undefined,
   b1: t.stats1h?.numBuys, s1: t.stats1h?.numSells, bv1: t.stats1h?.buyVolume, sv1: t.stats1h?.sellVolume, tr1: t.stats1h?.numTraders,
   tw: t.twitter, tg: t.telegram, top10: t.audit?.topHoldersPercentage, mintOff: t.audit?.mintAuthorityDisabled, freezeOff: t.audit?.freezeAuthorityDisabled, verified: t.isVerified, jt: Date.now() });
-const fromSF = t => ({ mint: t.mint, sym: t.symbol, name: t.name, simg: abs(t.imageUrl), pad: 'stonkfun', mcap: t.market?.marketCapUsd, price: t.market?.priceUsd, liq: t.market?.liquidityUsd, v24: t.market?.volume24hUsd, peak: t.market?.peakMarketCapUsd, created: t.createdAt, pool: t.pool,
+const fromSF = t => ({ mint: t.mint, sym: String(t.symbol || '').replace(/^\$+/, ''), name: t.name, simg: abs(t.imageUrl), pad: 'stonkfun', mcap: t.market?.marketCapUsd, price: t.market?.priceUsd, liq: t.market?.liquidityUsd, v24: t.market?.volume24hUsd, peak: t.market?.peakMarketCapUsd, created: t.createdAt, pool: t.pool,
   quote: t.quote?.symbol, qlogo: abs(t.quote?.logoUrl), qcat: t.quote?.categoryLabel, prog: t.graduationProgress, status: t.status, tfee: t.transferFee?.bps, sx: t.links?.twitter, sweb: t.links?.website, stg: t.links?.telegram });
 const ok = c => c && c.mint && !BAD.test((c.sym || '') + ' ' + (c.name || ''));
 async function get(u, ms = 10000) { const ac = new AbortController(); const to = setTimeout(() => ac.abort(), ms); try { const r = await fetch(u, { cache: 'no-store', signal: ac.signal }); if (!r.ok) throw new Error(r.status); return await r.json() } finally { clearTimeout(to) } }
