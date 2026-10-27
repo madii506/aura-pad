@@ -11,7 +11,7 @@ const pct = v => v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : '') + (Math.
 const fmtN = v => v == null || !isFinite(v) ? '—' : v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e4 ? (v / 1e3).toFixed(1) + 'K' : Math.round(v).toLocaleString('en-US');
 const ago = t => { if (!t) return '—'; const s = Math.max(0, (Date.now() - new Date(t)) / 1000); return s < 60 ? Math.round(s) + 's' : s < 3600 ? Math.round(s / 60) + 'm' : s < 86400 ? Math.round(s / 3600) + 'h' : Math.round(s / 86400) + 'd' };
 const short = a => a ? a.slice(0, 4) + '…' + a.slice(-4) : '';
-const padName = p => p === 'stonkfun' ? 'StonkFun' : p === 'pump.fun' ? 'pump.fun' : (p || '—');
+const padName = p => p === 'aura' ? 'aura' : p === 'stonkfun' ? 'StonkFun' : p === 'pump.fun' ? 'pump.fun' : (p || '—');
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 1800) };
 const tile = s => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#1c1c23"/><text x="32" y="41" text-anchor="middle" font-family="Arial" font-weight="700" font-size="24" fill="#b9a4ff">${String(s || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || '?'}</text></svg>`);
 const store = { get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d } catch (e) { return d } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch (e) { } } };
@@ -194,7 +194,7 @@ async function enrich(force) {
   if (!need.length) return;
   try { const r = await get(`${JUP}/search?query=${need.join(',')}`); keep(r.filter(t => need.includes(t.id)).map(fromJup)); need.forEach(m => { const c = ALL.get(m); if (c && !c.jt) c.jt = now }); grid(); if (VIEW === 'watch') wgrid(); king(); stats() } catch (e) { }
 }
-async function solPrice() { try { const r = await get(`${JUP}/search?query=${SOLM}`); SOL = r[0]?.usdPrice || SOL } catch (e) { } $('#sSol').textContent = SOL ? '$' + SOL.toFixed(2) : '—'; $('#kSol').textContent = SOL ? '$' + SOL.toFixed(2) + ' · live' : 'unavailable'; check() }
+async function solPrice() { try { const r = await get(`${JUP}/search?query=${SOLM}`); SOL = r[0]?.usdPrice || SOL } catch (e) { }  $('#kSol').textContent = SOL ? '$' + SOL.toFixed(2) + ' · live' : 'unavailable'; check() }
 function emptyIf(t) { if (!S[t].length && TAB === t) $('#grid').innerHTML = '<div class="empty">The data sources aren\'t answering right now. Try again in a moment.</div>' }
 
 /* =================== images =================== */
@@ -223,7 +223,7 @@ const img = (c, cls = '', id = '', sz = 'm') => {
   const L = srcs(c, sz); const sym = esc((c.sym || '').replace(/['\\]/g, '')); const idA = id ? ` id="${id}"` : '';
   return L.length ? `<img${idA} class="${cls}" src="${esc(L[0])}" data-alt="${esc(L.slice(1).join('|'))}" data-api="${c.mint && c.mint.length >= 32 ? esc(apiImg(c)) : ''}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="__ok(this,'${esc(c.mint || '')}')" onerror="__ai(this,'${sym}')">` : `<img${idA} class="${cls}" src="${tile(c.sym)}" alt="">`;
 };
-const padPill = c => c.pad === 'stonkfun' ? '<span class="pp sf"><i></i>StonkFun</span>' : c.pad === 'pump.fun' ? '<span class="pp pf"><i></i>pump.fun</span>' : '';
+const padPill = c => c.pad === 'aura' ? '<span class="pp" style="color:var(--a)"><i style="background:var(--a)"></i>aura</span>' : c.pad === 'stonkfun' ? '<span class="pp sf"><i></i>StonkFun</span>' : c.pad === 'pump.fun' ? '<span class="pp pf"><i></i>pump.fun</span>' : '';
 const quoteChip = c => c.quote ? `<span class="qt" title="Paired with ${esc(c.quote)} on StonkFun">${c.qlogo ? `<img src="${esc(c.qlogo)}" alt="" onerror="this.remove()">` : '⇄'}${esc(c.quote)}</span>` : '';
 const xUrl = c => c.sx || (c.tw && /^https?:/.test(c.tw) ? c.tw : c.tw ? 'https://x.com/' + String(c.tw).replace(/^@/, '') : '');
 const tgUrl = c => c.stg || (c.tg && /^https?:/.test(c.tg) ? c.tg : '');
@@ -266,9 +266,9 @@ function stats() {
   const all = [...ALL.values()]; const pf = all.filter(c => c.pad === 'pump.fun').length, sf = all.filter(c => c.pad === 'stonkfun').length;
   const n10 = all.filter(c => c.created && Date.now() - new Date(c.created) < 600000).length;
   const vol = all.reduce((a, c) => a + (c.v1 || 0), 0);
-  $('#nAll').textContent = all.length; $('#nPf').textContent = pf; $('#nSf').textContent = sf;
+  $('#nAll').textContent = all.length; $('#nPf').textContent = pf; $('#nSf').textContent = sf; $('#nAu').textContent = all.filter(c => c.pad === 'aura').length;
   countTo($('#hT'), all.length, v => Math.round(v).toLocaleString('en-US')); countTo($('#hN'), n10, v => Math.round(v)); countTo($('#hV'), vol, usd);
-  $('#s10').textContent = n10; $('#sVol').textContent = usd(vol); if (SFTOTAL) $('#sSfT').textContent = SFTOTAL.toLocaleString('en-US');
+
 }
 function sfFeeNote() {
   const f = [...ALL.values()].filter(c => c.pad === 'stonkfun' && c.tfee != null).map(c => c.tfee); if (!f.length) return;
@@ -305,7 +305,7 @@ function list(tab) {
 }
 function grid(fresh = []) {
   const L = list(TAB);
-  const msg = Q ? 'No coin matches that yet. Paste a full address to open any coin.' : TAB === 'watch' ? 'Nothing saved yet. Tap ☆ on any coin to watch it.' : LOADED.size < 2 ? 'Reading pump.fun and StonkFun…' : 'No coins here right now.';
+  const msg = PLAT === 'aura' && !Q ? 'No aura coins yet. Launches open with $AURA, and every coin launched on aura shows up here live.' : Q ? 'No coin matches that yet. Paste a full address to open any coin.' : TAB === 'watch' ? 'Nothing saved yet. Tap ☆ on any coin to watch it.' : LOADED.size < 2 ? 'Reading pump.fun and StonkFun…' : 'No coins here right now.';
   $('#grid').innerHTML = L.length ? L.map(c => card(c, fresh.includes(c.mint))).join('') : `<div class="empty">${msg}</div>`;
   $('#bCount').textContent = `${L.length} coins · ${PLAT === 'all' ? 'pump.fun + StonkFun' : padName(PLAT)}`;
   L.forEach(c => c.mcap && PREV.set(c.mint, c.mcap));
