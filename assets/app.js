@@ -232,7 +232,7 @@ const socials = c => { const a = []; const x = xUrl(c), w = webUrl(c), t = tgUrl
 
 /* =================== home renders =================== */
 function feed(L, hit) {
-  const box = $('#feedItems'); if (!L.length) return;
+  const box = $('#feedItems'); if (!box || !L.length) return;
   const html = L.map(c => `<a class="fi${hit ? ' hit' : ''}" href="#/coin/${c.mint}"><span class="pdot ${c.pad === 'stonkfun' ? 'sf' : 'pf'}"></span>${img(c, '', '', 's')}<b>$${esc((c.sym || '').slice(0, 10))}</b><span>${c.pad === 'stonkfun' ? 'StonkFun' : 'pump.fun'} · ${usd(c.mcap)}</span></a>`).join('');
   box.insertAdjacentHTML('afterbegin', html); while (box.children.length > 28) box.lastChild.remove();
 }
