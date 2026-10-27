@@ -1,6 +1,8 @@
 // Records real screen footage of the live aura site (real data, real chart, real Jupiter quote)
 // as separate clips. Runs in GitHub Actions; outputs mp4 clips + a log into ./out
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-core';
+import ffmpegPath from 'ffmpeg-static';
+const FFMPEG = process.env.FFMPEG || ffmpegPath || 'ffmpeg';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
@@ -10,7 +12,7 @@ const LOG = []; const L = (...a) => { const s = a.join(' '); console.log(s); LOG
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const W = 1600, H = 900, DPR = 1.2;
 
-const browser = await chromium.launch({ args: ['--hide-scrollbars', '--disable-features=Translate', '--force-color-profile=srgb'] });
+const browser = await chromium.launch({ channel: process.env.CHANNEL || 'chrome', args: ['--hide-scrollbars', '--disable-features=Translate', '--force-color-profile=srgb'] });
 const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DPR, colorScheme: 'dark', locale: 'en-US' });
 await ctx.addInitScript(() => {
   const mk = () => {
@@ -38,7 +40,7 @@ async function stop(name) {
   if (F.length) list += `file 'f${String(F.length - 1).padStart(5, '0')}.jpg'\n`;
   fs.writeFileSync(`${dir}/list.txt`, list);
   const span = F.length ? (F[F.length - 1].t - F[0].t + 0.4) : 0;
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', `${dir}/list.txt`, '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=0x0d0d10,fps=30', '-c:v', 'libx264', '-preset', 'slow', '-crf', '15', '-pix_fmt', 'yuv420p', `${OUT}/${name}.mp4`]);
+  execFileSync(FFMPEG, ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', `${dir}/list.txt`, '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=0x0d0d10,fps=30', '-c:v', 'libx264', '-preset', 'slow', '-crf', '15', '-pix_fmt', 'yuv420p', `${OUT}/${name}.mp4`]);
   L(`clip ${name}: ${F.length} frames over ${span.toFixed(2)}s (${(F.length / Math.max(span, .1)).toFixed(1)} fps)`);
 }
 let MX = W / 2, MY = H + 40;
