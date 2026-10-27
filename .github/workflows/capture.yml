@@ -1,0 +1,34 @@
+name: capture
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['capture/**', '.github/workflows/capture.yml']
+permissions:
+  contents: write
+jobs:
+  cap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: deps
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-noto-color-emoji >/dev/null
+          cd capture && npm init -y >/dev/null && npm i -s playwright@1.48.2 && npx playwright install --with-deps chromium >/dev/null
+      - name: record
+        continue-on-error: true
+        run: |
+          cd capture && mkdir -p out
+          node capture.mjs 2>&1 | tee out/run.log
+      - name: publish
+        if: always()
+        run: |
+          cd capture/out && rm -rf frames_*
+          git init -q && git checkout -q -b capture
+          git config user.name "aura-capture" && git config user.email "aura-capture@users.noreply.github.com"
+          git add -A && git commit -qm "capture ${GITHUB_RUN_ID}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" capture
