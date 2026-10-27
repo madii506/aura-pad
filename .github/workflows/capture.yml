@@ -6,10 +6,13 @@ on:
     paths: ['capture/**', '.github/workflows/capture.yml']
 permissions:
   contents: write
+concurrency:
+  group: capture
+  cancel-in-progress: true
 jobs:
   cap:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,7 +24,7 @@ jobs:
           cd capture && npm init -y >/dev/null && npm i --no-audit --no-fund playwright-core@1.48.2 ffmpeg-static@5.2.0
           which google-chrome && google-chrome --version
       - name: record
-        timeout-minutes: 12
+        timeout-minutes: 62
         continue-on-error: true
         run: |
           cd capture && mkdir -p out
@@ -31,6 +34,6 @@ jobs:
         run: |
           cd capture && mkdir -p out && cd out && rm -rf frames_*
           git init -q && git checkout -q -b capture
-          git config user.name "aura-capture" && git config user.email "aura-capture@users.noreply.github.com"
+          git config user.name "maxx-capture" && git config user.email "maxx-capture@users.noreply.github.com"
           git add -A && git commit -qm "capture ${GITHUB_RUN_ID}" --allow-empty
           git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" capture
