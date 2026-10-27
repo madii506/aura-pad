@@ -140,6 +140,19 @@ const fromSF = t => ({ mint: t.mint, sym: t.symbol, name: t.name, simg: abs(t.im
   quote: t.quote?.symbol, qlogo: abs(t.quote?.logoUrl), qcat: t.quote?.categoryLabel, prog: t.graduationProgress, status: t.status, tfee: t.transferFee?.bps, sx: t.links?.twitter, sweb: t.links?.website, stg: t.links?.telegram });
 const ok = c => c && c.mint && !BAD.test((c.sym || '') + ' ' + (c.name || ''));
 async function get(u, ms = 10000) { const ac = new AbortController(); const to = setTimeout(() => ac.abort(), ms); try { const r = await fetch(u, { cache: 'no-store', signal: ac.signal }); if (!r.ok) throw new Error(r.status); return await r.json() } finally { clearTimeout(to) } }
+/* Jupiter: through our edge-cached proxy first, then direct with a polite queue and 429 backoff */
+let JQ = Promise.resolve(), JNEXT = 0;
+function jdirect(path) {
+  const run = async () => {
+    for (let i = 0; i < 4; i++) {
+      const w = JNEXT - Date.now(); if (w > 0) await sleep(w); JNEXT = Date.now() + 500;
+      try { return await get(`${JUP}/${path}`) } catch (e) { if (String(e.message) !== '429') throw e; JNEXT = Date.now() + 1500 * (i + 1) }
+    }
+    throw new Error('429');
+  };
+  const p = JQ.then(run); JQ = p.catch(() => { }); return p;
+}
+async function jget(path) { try { return await get('/api/jup?p=' + encodeURIComponent(path), 12000) } catch (e) { return jdirect(path) } }
 const ALL = new Map(), GOOD = {}, PREV = new Map();
 const S = { new: [], trend: [], aura: [], move: [], top: [] };
 let TAB = 'new', PLAT = 'all', SORT = 'def', Q = '', REMOTE = [], SFTOTAL = null, SOL = null;
@@ -163,7 +176,7 @@ function addNew(L, src) {
   if (TAB === 'new') grid(fresh); stats();
 }
 async function loadJNew() {
-  try { const L = keep((await get(`${JUP}/recent`)).filter(t => PADS.has(t.launchpad)).map(fromJup)); addNew(L, 'j') }
+  try { const L = keep((await jget('recent')).filter(t => PADS.has(t.launchpad)).map(fromJup)); addNew(L, 'j') }
   catch (e) { emptyIf('new') } finally { LOADED.add('jn'); introProgress() }
 }
 async function loadSFNew() {
@@ -172,7 +185,7 @@ async function loadSFNew() {
 }
 async function loadTrend() {
   try {
-    const L = keep((await get(`${JUP}/toptrending/1h?limit=100`)).filter(t => PADS.has(t.launchpad)).map(fromJup));
+    const L = keep((await jget('toptrending/1h?limit=100')).filter(t => PADS.has(t.launchpad)).map(fromJup));
     S.trend = L.slice(0, 48).map(c => c.mint);
     S.move = [...L].sort((a, b) => Math.abs(b.c5 || 0) - Math.abs(a.c5 || 0)).slice(0, 48).map(c => c.mint);
     strip(); meter(); stats(); topList(); if (['trend', 'move', 'top'].includes(TAB)) grid();
@@ -180,7 +193,7 @@ async function loadTrend() {
 }
 async function loadAura() {
   try {
-    const L = keep((await get(`${JUP}/toporganicscore/1h?limit=100`)).filter(t => PADS.has(t.launchpad)).map(fromJup));
+    const L = keep((await jget('toporganicscore/1h?limit=100')).filter(t => PADS.has(t.launchpad)).map(fromJup));
     S.aura = L.sort((a, b) => (b.aura || 0) - (a.aura || 0)).slice(0, 48).map(c => c.mint); king(); if (TAB === 'aura') grid();
   } catch (e) { if (!S.aura.length) $('#king').innerHTML = '<div class="empty">Jupiter isn\'t answering right now.</div>' } finally { LOADED.add('au'); introProgress() }
 }
@@ -192,9 +205,9 @@ async function enrich(force) {
   const need = [...ALL.values()].filter(c => c.pad === 'stonkfun' && (!c.jt || now - c.jt > 45000)).sort(byNew).slice(0, 100).map(c => c.mint);
   WATCH.forEach(m => { const c = ALL.get(m); if ((!c || !c.jt || now - c.jt > 45000) && !need.includes(m) && need.length < 100) need.push(m) });
   if (!need.length) return;
-  try { const r = await get(`${JUP}/search?query=${need.join(',')}`); keep(r.filter(t => need.includes(t.id)).map(fromJup)); need.forEach(m => { const c = ALL.get(m); if (c && !c.jt) c.jt = now }); grid(); if (VIEW === 'watch') wgrid(); king(); stats() } catch (e) { }
+  try { const r = await jget('search?query=' + need.join(',')); keep(r.filter(t => need.includes(t.id)).map(fromJup)); need.forEach(m => { const c = ALL.get(m); if (c && !c.jt) c.jt = now }); grid(); if (VIEW === 'watch') wgrid(); king(); stats() } catch (e) { }
 }
-async function solPrice() { try { const r = await get(`${JUP}/search?query=${SOLM}`); SOL = r[0]?.usdPrice || SOL } catch (e) { }  $('#kSol').textContent = SOL ? '$' + SOL.toFixed(2) + ' · live' : 'unavailable'; check() }
+async function solPrice() { try { const r = await jget('search?query=' + SOLM); SOL = r[0]?.usdPrice || SOL } catch (e) { }  $('#kSol').textContent = SOL ? '$' + SOL.toFixed(2) + ' · live' : 'unavailable'; check() }
 function emptyIf(t) { if (!S[t].length && TAB === t) $('#grid').innerHTML = '<div class="empty">The data sources aren\'t answering right now. Try again in a moment.</div>' }
 
 /* =================== images =================== */
@@ -322,7 +335,7 @@ $('#q').addEventListener('input', e => {
   if (VIEW !== 'home') location.hash = '#/board'; else grid();
   clearTimeout(QT); if (Q.length < 2) return;
   QT = setTimeout(async () => {
-    const q = Q; const [a, b] = await Promise.allSettled([get(`${JUP}/search?query=${encodeURIComponent(q)}`), get(`${SFAPI}?q=${encodeURIComponent(q)}&pageSize=30&page=1`)]);
+    const q = Q; const [a, b] = await Promise.allSettled([jget('search?query=' + encodeURIComponent(q)), get(`${SFAPI}?q=${encodeURIComponent(q)}&pageSize=30&page=1`)]);
     if (q !== Q) return;
     const L = [...(a.status === 'fulfilled' ? keep(a.value.filter(t => PADS.has(t.launchpad)).map(fromJup)) : []), ...(b.status === 'fulfilled' ? keep((b.value.data?.tokens || []).map(fromSF)) : [])];
     REMOTE = [...new Set(L.map(c => c.mint))]; grid();
@@ -395,7 +408,7 @@ async function coin(mint) {
   const jt = $('#jup'); jt.style.minHeight = ''; jt.innerHTML = '<div class="skel" style="height:420px"></div>'; $('#jupNote').textContent = 'Swaps run through Jupiter. You sign in your own wallet.';
   loadJupPlugin().then(() => { if (CUR !== mint) return; jt.innerHTML = ''; window.Jupiter.init({ displayMode: 'integrated', integratedTargetId: 'jup', formProps: { initialInputMint: SOLM, initialOutputMint: mint } }) })
     .catch(() => { if (CUR !== mint) return; jt.style.minHeight = '0'; jt.innerHTML = `<a class="btn pri" style="width:100%;height:48px" href="https://jup.ag/swap/SOL-${encodeURIComponent(mint)}" target="_blank" rel="noopener">Trade on Jupiter ↗</a>`; $('#jupNote').textContent = 'Opens Jupiter in a new tab. You sign in your own wallet.' });
-  try { const r = await get(`${JUP}/search?query=${mint}`); const t = r.find(x => x.id === mint); if (t) c = keep([fromJup(t)])[0] } catch (e) { }
+  try { const r = await jget('search?query=' + mint); const t = r.find(x => x.id === mint); if (t) c = keep([fromJup(t)])[0] } catch (e) { }
   if (c && c.pad === 'stonkfun' && c.quote == null) { try { const j = await get(`${SFAPI}?q=${mint}&pageSize=5&page=1`); const t = (j.data?.tokens || []).find(x => x.mint === mint); if (t) c = keep([fromSF(t)])[0] } catch (e) { } }
   if (CUR !== mint) return;
   renderCoin(c || { mint, sym: '?', name: 'Coin not found on Jupiter yet' });
@@ -413,7 +426,7 @@ function tkCheck() {
   if (tk.length < 2) { out.innerHTML = ''; return }
   out.innerHTML = `Checking <b>$${esc(tk)}</b> on pump.fun and StonkFun…`;
   TK = setTimeout(async () => {
-    const [a, b] = await Promise.allSettled([get(`${JUP}/search?query=${encodeURIComponent(tk)}`), get(`${SFAPI}?q=${encodeURIComponent(tk)}&pageSize=100&page=1`)]);
+    const [a, b] = await Promise.allSettled([jget('search?query=' + encodeURIComponent(tk)), get(`${SFAPI}?q=${encodeURIComponent(tk)}&pageSize=100&page=1`)]);
     if ($('#lTk').value.trim().toUpperCase().replace(/^\$/, '') !== tk) return;
     const pf = a.status === 'fulfilled' ? a.value.filter(t => t.launchpad === 'pump.fun' && String(t.symbol).toUpperCase() === tk).length : null;
     const sf = b.status === 'fulfilled' ? (b.value.data?.tokens || []).filter(t => String(t.symbol).toUpperCase() === tk).length : null;
@@ -556,9 +569,9 @@ function revealAll() { if (!('IntersectionObserver' in window)) { $$('.rv').forE
 $('#nWatch').textContent = WATCH.length;
 $$('aside .nav a, aside .slab, aside .sbtn, aside .ls').forEach((e, i) => e.style.setProperty('--d', i));
 route(); revealAll();
-loadJNew(); loadSFNew(); loadTrend(); loadAura(); loadSFTop(); solPrice();
-setTimeout(enrich, 2500);
+loadJNew(); loadSFNew(); setTimeout(loadTrend, 250); setTimeout(loadAura, 500); loadSFTop();
+setTimeout(enrich, 3000);
 const every = (fn, ms) => setInterval(() => { if (!document.hidden) fn() }, ms);
-every(loadJNew, 8000); every(loadSFNew, 10000); every(loadTrend, 30000); every(loadAura, 45000); every(loadSFTop, 60000); every(enrich, 20000); every(solPrice, 60000);
+every(loadJNew, 8000); every(loadSFNew, 10000); every(loadTrend, 30000); every(loadAura, 45000); every(loadSFTop, 60000); every(enrich, 40000); every(() => { if (VIEW === 'check') solPrice() }, 60000);
 every(stats, 15000);
 })();
