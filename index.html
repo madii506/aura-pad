@@ -36,7 +36,7 @@ img{display:block}
 #intro.out{opacity:0;transform:scale(1.18);filter:blur(10px);pointer-events:none}
 #ic{position:absolute;inset:0;width:100%;height:100%;z-index:1}
 .iwrap{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 16px;pointer-events:none}
-#ia{width:min(34vmin,240px);aspect-ratio:299/360;margin-bottom:22px}
+#ia{width:min(40vmin,280px);aspect-ratio:299/360}
 .iw{font:700 clamp(54px,10vw,96px)/1 Pix;color:var(--a2);display:flex;gap:.02em;text-shadow:0 0 40px rgba(185,164,255,.5);min-height:1em}
 .iw span{display:inline-block;opacity:0;transition:opacity .15s}
 .iw span.on{opacity:1}
@@ -395,9 +395,6 @@ textarea.in{height:96px;padding:12px 14px;resize:vertical}
   <canvas id="ic"></canvas>
   <div class="iwrap">
     <div id="ia"></div>
-    <div class="iw" id="iw"><span>a</span><span>u</span><span>r</span><span>a</span></div>
-    <div class="ifee"><span>pump.fun <s>1.25%</s></span><i>→</i><span>aura <b id="ifeeV">1.25%</b></span></div>
-    <div class="ild"><small id="ildT"><i class="dot"></i>reading pump.fun and StonkFun</small></div>
   </div>
   <div class="ibar"><i id="ildB"></i></div>
   <button class="iskip" id="iskip">skip</button>
@@ -455,7 +452,6 @@ textarea.in{height:96px;padding:12px 14px;resize:vertical}
       <h1>Every trade here <em>costs less.</em></h1>
       <p>And pays creators and traders more. 0.5% a trade instead of pump.fun's 1.25%, 0.3% of it to the creator, and snipers who buy in block 0 pay 99%.</p>
       <div class="row"><a class="btn pri" href="#/launch">Launch a coin</a><a class="btn gh" href="#/board">Browse the board</a><a class="btn gh" href="#/check">Check your aura</a></div>
-      <div class="hnums"><div><b id="hT">—</b><span>coins on the board</span></div><div><b id="hN">—</b><span>new in 10 min</span></div><div><b id="hV">—</b><span>traded in the last hour</span></div></div>
     </div>
     <div class="meter" id="meter">
       <div class="k"><i class="dot"></i>Last hour · pump.fun coins below</div>
@@ -484,7 +480,6 @@ textarea.in{height:96px;padding:12px 14px;resize:vertical}
     </div>
   </div>
   <div class="grid" id="grid"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
-  <div class="src" id="src">Live pump.fun and StonkFun coins, read from Jupiter and StonkFun's public API. These are not aura coins: aura launches open with $AURA.</div>
 </section>
 
 <!-- WATCH -->
